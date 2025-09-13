@@ -1,0 +1,43 @@
+{
+  "name": "techsnap",
+  "version": "1.0.0",
+  "description": "このプロジェクトは、/docs 配下のドキュメントに基づいて作成されています。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "tailwind-init": "npx tailwindcss init -p"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kazukifukuyama14/techsnap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/kazukifukuyama14/techsnap/issues"
+  },
+  "homepage": "https://github.com/kazukifukuyama14/techsnap#readme",
+  "devDependencies": {
+    "@types/node": "^20.19.14",
+    "@types/react": "^18.3.24",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.51.0",
+    "eslint-config-next": "^13.5.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.3",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "next": "^15.5.3",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}
