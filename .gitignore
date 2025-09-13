@@ -33,6 +33,9 @@ ui-debug.log
 # Analysis files
 /env_audits/
 
+# CICD
+cicd-sa-key.json
+
 # OS files
 .DS_Store
 Thumbs.db
