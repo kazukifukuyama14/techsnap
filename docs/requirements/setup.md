@@ -692,7 +692,10 @@ gsutil mb -p ${MGMT_PROJECT_ID} -l asia-northeast1 -b on ${STATE_BUCKET}
 gsutil versioning set on ${STATE_BUCKET}
 
 # バケットのロケーション確認（既存バケットの場合はこれで実ロケーションを取得）
-BUCKET_LOCATION=$(gsutil ls -Lb ${STATE_BUCKET} | sed -n 's/.*Location:\s*//p' | head -n1)
+BUCKET=gs://techsnap-terraform-state
+MGMT_PROJECT_ID=techsnap-mgmt
+gcloud config set project ${MGMT_PROJECT_ID}
+BUCKET_LOCATION=$(gcloud storage buckets describe ${BUCKET} --format='value(location)')
 echo "Bucket location: ${BUCKET_LOCATION}"
 
 # KMS KeyRing/Key をバケットと同じロケーションに作成
@@ -736,6 +739,51 @@ gsutil kms encryption ${STATE_BUCKET}
 
 - 404 Not Found（CryptoKey ... not found）: KeyRing/Key が存在しない、またはロケーションが一致していません。`KMS_LOCATION` がバケットの `Location` と一致しているか確認してください。
 - 403 PERMISSION_DENIED（KMS API 未使用）: エラーメッセージに表示されるプロジェクト番号のプロジェクトで `cloudkms.googleapis.com` が有効か確認・有効化してください。通常はステートバケットを所有する管理プロジェクトです。
+
+#### 4.2 補足: 実行例（US マルチリージョンのバケット）
+
+既存のステートバケットのロケーションが `US`（Cloud Storage マルチリージョン）の場合、Cloud KMS 側のロケーションは `us` を使用します。以下は実行済みで正常終了したコマンド例です。
+
+```bash
+# 事前に以下が設定済みであること
+# export MGMT_PROJECT_ID=techsnap-mgmt
+# export BUCKET=gs://techsnap-terraform-state
+
+# バケットのロケーション確認（例: 出力が US）
+BUCKET_LOCATION=$(gcloud storage buckets describe ${BUCKET} --format='value(location)')
+echo "Bucket location: ${BUCKET_LOCATION}"
+
+# US → us にマッピングして KMS を作成
+export KMS_LOCATION=us
+export KMS_KEYRING=terraform
+export KMS_KEY=state
+
+# KMS API（念のため）
+gcloud services enable cloudkms.googleapis.com --project=${MGMT_PROJECT_ID}
+
+# KeyRing/Key 作成（既存なら成功扱い）
+gcloud kms keyrings create ${KMS_KEYRING} \
+  --location=${KMS_LOCATION} --project=${MGMT_PROJECT_ID} || true
+
+gcloud kms keys create ${KMS_KEY} \
+  --location=${KMS_LOCATION} --keyring=${KMS_KEYRING} \
+  --purpose=encryption --project=${MGMT_PROJECT_ID} || true
+
+# Storage のプロジェクト SA に鍵使用権限を付与
+PN=$(gcloud projects describe ${MGMT_PROJECT_ID} --format='value(projectNumber)')
+SA=service-${PN}@gs-project-accounts.iam.gserviceaccount.com
+gcloud kms keys add-iam-policy-binding ${KMS_KEY} \
+  --keyring=${KMS_KEYRING} --location=${KMS_LOCATION} --project=${MGMT_PROJECT_ID} \
+  --member="serviceAccount:${SA}" \
+  --role="roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+# バケットのデフォルト暗号鍵に設定
+KMS=projects/${MGMT_PROJECT_ID}/locations/${KMS_LOCATION}/keyRings/${KMS_KEYRING}/cryptoKeys/${KMS_KEY}
+gsutil kms encryption -k ${KMS} ${BUCKET}
+
+# 検証（鍵が表示されればOK）
+gsutil kms encryption ${BUCKET}
+```
 
 ### 4.3 環境変数ファイル準備（マルチアカウント）
 
