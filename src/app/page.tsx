@@ -1,9 +1,16 @@
 import React from "react";
+import { GROUP_LABELS, listFeedItems } from "@/lib/data";
+import FeedList from "@/components/FeedList";
 
-export default function Home() {
+export default function Home({ searchParams }: { searchParams?: { group?: string } }) {
+  const group = searchParams?.group as any | undefined;
+  const items = listFeedItems({ group });
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <h1 className="text-4xl font-bold text-blue-600">Welcome to TechSnap</h1>
-    </main>
+    <div className="space-y-6">
+      <h1 className="text-xl font-semibold">
+        最新の更新{group ? ` — ${GROUP_LABELS[group as keyof typeof GROUP_LABELS]}` : ""}
+      </h1>
+      <FeedList items={items} />
+    </div>
   );
 }
