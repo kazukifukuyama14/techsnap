@@ -33,6 +33,14 @@ ui-debug.log
 # Analysis files
 /env_audits/
 
+# CICD
+cicd-sa-key.json
+
+# IDE files
+.vscode/
+.codex/
+AGENTS.md
+
 # OS files
 .DS_Store
 Thumbs.db
