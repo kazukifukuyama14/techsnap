@@ -38,7 +38,11 @@ cicd-sa-key.json
 
 # IDE files
 .vscode/
+<<<<<<< HEAD
+.codex/
+=======
 .codex
+>>>>>>> origin/main
 AGENTS.md
 
 # OS files
