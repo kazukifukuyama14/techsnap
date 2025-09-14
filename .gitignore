@@ -36,6 +36,11 @@ ui-debug.log
 # CICD
 cicd-sa-key.json
 
+# IDE files
+.vscode/
+.codex
+AGENTS.md
+
 # OS files
 .DS_Store
 Thumbs.db
