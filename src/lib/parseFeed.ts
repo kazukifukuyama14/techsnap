@@ -103,6 +103,26 @@ function getRssLink(item: Element): string | undefined {
 function stripHtml(html: string) {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
-  const text = tmp.textContent || tmp.innerText || "";
-  return text.slice(0, 280);
+  const raw = tmp.textContent || tmp.innerText || "";
+  // normalize whitespace
+  const text = raw.replace(/\s+/g, " ").trim();
+  // Prefer cutting on sentence boundary up to ~600 chars
+  const max = 600;
+  if (text.length <= max) return text;
+  // try to find the last sentence end within limit
+  const slice = text.slice(0, max);
+  const boundary = Math.max(
+    slice.lastIndexOf("。"),
+    slice.lastIndexOf("！"),
+    slice.lastIndexOf("？"),
+    slice.lastIndexOf("."),
+    slice.lastIndexOf("!"),
+    slice.lastIndexOf("?")
+  );
+  if (boundary > 40) return slice.slice(0, boundary + 1);
+  // fallback: cut at last comma-like mark
+  const comma = Math.max(slice.lastIndexOf("、"), slice.lastIndexOf(","));
+  if (comma > 40) return slice.slice(0, comma + 1);
+  // final fallback: hard cut without trailing half-words
+  return slice.trimEnd();
 }

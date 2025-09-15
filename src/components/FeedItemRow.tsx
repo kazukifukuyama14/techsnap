@@ -3,6 +3,7 @@ import { FeedItem } from "@/lib/types";
 import { formatJaDate } from "@/lib/utils";
 
 export default function FeedItemRow({ item }: { item: FeedItem }) {
+  const desc = (item as any).excerptJa ?? item.summaryJa ?? item.excerpt;
   return (
     <div className="group grid grid-cols-[auto,1fr,auto] items-start gap-4 py-4 border-b border-neutral-200">
       <div className="text-xs text-neutral-500 px-2 py-1 border border-neutral-300 rounded">
@@ -15,11 +16,9 @@ export default function FeedItemRow({ item }: { item: FeedItem }) {
           rel="noopener noreferrer"
           className="text-[15px] leading-6 hover:underline"
         >
-          {item.titleJa ?? item.title}
+          {item.title}
         </a>
-        {(item.summaryJa || item.excerpt) && (
-          <p className="mt-1 text-sm text-neutral-600">{item.summaryJa ?? item.excerpt}</p>
-        )}
+        {desc && <p className="mt-1 text-sm text-neutral-800">{desc}</p>}
         <div className="mt-1 flex flex-wrap gap-2">
           <span className="text-[11px] uppercase tracking-wide text-neutral-500">{item.kind}</span>
           {item.tags?.map((t) => (

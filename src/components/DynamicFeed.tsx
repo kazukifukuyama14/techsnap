@@ -11,8 +11,13 @@ export default function DynamicFeed({ group, sourceSlug }: Props) {
   const [error, setError] = React.useState<string | null>(null);
   const [translator, setTranslator] = React.useState<string | null>(null);
   const [visible, setVisible] = React.useState(30);
+  const didRef = React.useRef(false);
 
   React.useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      if (didRef.current) return; // avoid double-run in React Strict Mode
+      didRef.current = true;
+    }
     let url = "/api/feeds";
     const p = new URLSearchParams();
     if (group) p.set("group", group);
@@ -49,8 +54,10 @@ export default function DynamicFeed({ group, sourceSlug }: Props) {
         list.sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
         const head = list.slice(0, 20);
         const tail = list.slice(20);
-        // Samari風: タイトルは原文のまま、要約は日本語の1文。
-        return fetch("/api/summarize", {
+        // 先に即時描画（原文/既存要約のまま）
+        setItems(list);
+        // 上位20件について、説明の翻訳＋本文要約を生成（後追い反映）
+        return fetch("/api/enrich", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ items: head.map((i) => ({ id: i.id, title: i.title, url: i.url, excerpt: i.excerpt })) }),
@@ -58,12 +65,23 @@ export default function DynamicFeed({ group, sourceSlug }: Props) {
           .then((r) => r.json())
           .then((res) => {
             setTranslator(res?.provider ?? null);
-            const map = new Map<string, { summaryJa?: string }>();
+            const map = new Map<string, { summaryJa?: string; excerptJa?: string }>();
             for (const it of res.items ?? []) map.set(it.id, it);
-            const mergedHead = head.map((i) => ({ ...i, summaryJa: map.get(i.id)?.summaryJa ?? i.excerpt }));
-            setItems([...mergedHead, ...tail]);
+            const mergedHead = head.map((i) => ({
+              ...i,
+              summaryJa: map.get(i.id)?.summaryJa ?? i.summaryJa ?? i.excerpt,
+              // 記述欄として翻訳済みexcerptも併せて保持
+              excerptJa: map.get(i.id)?.excerptJa ?? (map.get(i.id) as any)?.descriptionJa,
+            }));
+            // 既存リストに反映（順序を維持）
+            setItems((prev) => {
+              const base = prev ?? list;
+              const byId = new Map(base.map((x) => [x.id, x] as const));
+              for (const m of mergedHead) byId.set(m.id, { ...byId.get(m.id)!, ...m });
+              return Array.from(byId.values());
+            });
           })
-          .catch(() => setItems(list));
+          .catch(() => {})
       })
       .catch((e) => setError(String(e)));
   }, [group, sourceSlug]);
@@ -80,9 +98,11 @@ export default function DynamicFeed({ group, sourceSlug }: Props) {
 
   return (
     <div className="space-y-4">
-      {translator === "fallback" && (
+      {translator && (
         <div className="text-xs text-neutral-500">
-          自動翻訳が未設定のため原文を表示しています（OpenAI/DeepL/LibreTranslate を設定可）。
+          {translator === "fallback"
+            ? "自動翻訳/要約が未設定のため原文ベースで表示しています。"
+            : `要約/翻訳: ${translator}`}
         </div>
       )}
       {Object.entries(groups)

@@ -45,6 +45,21 @@ async function fetchWithTimeout(url: string, ms: number, accept?: string, refere
   }
 }
 
+// simple concurrency limiter
+async function runWithLimit<T>(limit: number, tasks: (() => Promise<T>)[]) {
+  const results: T[] = new Array(tasks.length) as any;
+  let i = 0;
+  const workers = new Array(Math.min(limit, tasks.length)).fill(0).map(async () => {
+    while (true) {
+      const idx = i++;
+      if (idx >= tasks.length) break;
+      results[idx] = await tasks[idx]();
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 // シンプルなRSS/Atom発見（<link rel="alternate" type="application/rss+xml"> 等）
 async function discoverFeedFromPage(pageUrl: string) {
   const r = await fetchWithTimeout(pageUrl, 10_000, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
@@ -190,12 +205,12 @@ export async function GET(req: NextRequest) {
     : getFeedSourcesByGroup(group);
 
   const results: any[] = [];
-  for (const s of targets) {
+  const tasks = targets.map((s) => async () => {
     let urls = getFeedUrls(s!.slug);
     const tried: any[] = [];
     let fetched: any = null;
     for (const u of urls) {
-      const r = await fetchWithTimeout(u, 12_000, undefined, s!.siteUrl, u.includes("hashicorp.com") ? 2 : 0);
+      const r = await fetchWithTimeout(u, 8_000, undefined, s!.siteUrl, u.includes("hashicorp.com") ? 2 : 0);
       if (debug) tried.push({ step: "feed", url: u, ok: r.ok, status: r.status, ct: r.contentType });
       if (r.ok && r.body) {
         const ct = (r.contentType || "").toLowerCase();
@@ -212,9 +227,9 @@ export async function GET(req: NextRequest) {
       const discovered = await discoverFeedFromPage(s!.siteUrl!);
       if (debug) tried.push({ step: "discover", site: s!.siteUrl, candidates: discovered });
       if (discovered.length) {
-        urls = discovered.slice(0, 3);
+        urls = discovered.slice(0, 2);
         for (const du of urls) {
-          const r2 = await fetchWithTimeout(du, 12_000, undefined, s!.siteUrl, du.includes("hashicorp.com") ? 2 : 0);
+          const r2 = await fetchWithTimeout(du, 8_000, undefined, s!.siteUrl, du.includes("hashicorp.com") ? 2 : 0);
           if (debug) tried.push({ step: "discover-fetch", url: du, ok: r2.ok, status: r2.status, ct: r2.contentType });
           if (r2.ok && r2.body) {
             fetched = { ...r2, sourceSlug: s!.slug, sourceName: s!.name };
@@ -244,7 +259,7 @@ export async function GET(req: NextRequest) {
       const guessed = guessFeedUrls(s!.siteUrl!);
       if (debug) tried.push({ step: "guess", site: s!.siteUrl, candidates: guessed });
       for (const gu of guessed) {
-        const r3 = await fetchWithTimeout(gu, 12_000, undefined, s!.siteUrl, gu.includes("hashicorp.com") ? 2 : 0);
+        const r3 = await fetchWithTimeout(gu, 8_000, undefined, s!.siteUrl, gu.includes("hashicorp.com") ? 2 : 0);
         if (debug) tried.push({ step: "guess-fetch", url: gu, ok: r3.ok, status: r3.status, ct: r3.contentType });
         if (r3.ok && r3.body) {
           fetched = { ...r3, sourceSlug: s!.slug, sourceName: s!.name };
@@ -255,7 +270,7 @@ export async function GET(req: NextRequest) {
     // Google Cloud / HashiCorp(Terraform) の最終フォールバック: HTMLから一覧を簡易抽出
     if (!fetched) {
       try {
-        const htmlRes = await fetchWithTimeout(s!.siteUrl!, 12_000, "text/html,application/xhtml+xml");
+        const htmlRes = await fetchWithTimeout(s!.siteUrl!, 8_000, "text/html,application/xhtml+xml");
         if (htmlRes.ok && htmlRes.body) {
           const items = scrapeListFromHtml(htmlRes.body, s!.siteUrl!);
           if (items.length) {
@@ -279,7 +294,10 @@ export async function GET(req: NextRequest) {
     }
     if (debug) fetched.tried = tried;
     if (fetched) results.push(fetched);
-  }
+  });
+
+  // fetch multiple sources in parallel with a modest limit
+  await runWithLimit(4, tasks);
 
   const payload = { results, cachedAt: new Date().toISOString() };
   await writeCache(cacheKey, payload);
