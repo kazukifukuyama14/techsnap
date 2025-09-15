@@ -3,34 +3,11 @@ import React from "react";
 import Link from "next/link";
 import { GROUP_LABELS, listSources } from "@/lib/data";
 import { useSearchParams, usePathname } from "next/navigation";
+import { iconPath } from "@/lib/icons";
 
 const GROUPS = ["development", "cloud", "libraries", "programming"] as const;
 
 // アイコンは public/icons 配下のSVGを使用
-export const iconForSource: Record<string, string> = {
-  "argo-cd": "/icons/argo.svg",
-  circleci: "/icons/circleci.svg",
-  github: "/icons/github.svg",
-  gitlab: "/icons/gitlab.svg",
-  docker: "/icons/docker.svg",
-  aws: "/icons/aws.svg",
-  azure: "/icons/azure.svg",
-  firebase: "/icons/firebase.svg",
-  gcp: "/icons/google_cloud.svg",
-  kubernetes: "/icons/kubernetes.svg",
-  terraform: "/icons/terraform.svg",
-  nextjs: "/icons/nextjs.svg",
-  nuxt: "/icons/nuxtjs.svg",
-  rails: "/icons/rails.svg",
-  react: "/icons/reactjs.svg",
-  vue: "/icons/vuejs.svg",
-  go: "/icons/golang.svg",
-  nodejs: "/icons/nodejs.svg",
-  python: "/icons/python.svg",
-  ruby: "/icons/ruby.svg",
-  rust: "/icons/rust.svg",
-  typescript: "/icons/typescript.svg",
-};
 
 function Chevron({ collapsed }: { collapsed: boolean }) {
   return (
@@ -61,7 +38,10 @@ export default function Sidebar() {
     try {
       const saved = localStorage.getItem("sidebar-collapsed");
       if (saved) setCollapsed(JSON.parse(saved));
-    } catch {}
+      else setCollapsed(initAllCollapsed());
+    } catch {
+      setCollapsed(initAllCollapsed());
+    }
   }, []);
   React.useEffect(() => {
     try {
@@ -72,6 +52,18 @@ export default function Sidebar() {
   const toggle = (g: string) => setCollapsed((s) => ({ ...s, [g]: !s[g] }));
 
   const onAll = pathname === "/" && !activeGroup;
+
+  // ページ遷移や検索パラメータの更新時は全て閉じる
+  const prevKey = React.useRef<string>("");
+  React.useEffect(() => {
+    const key = `${pathname}?${searchParams.toString()}`;
+    if (prevKey.current && prevKey.current !== key) {
+      const allClosed = initAllCollapsed();
+      setCollapsed(allClosed);
+      try { localStorage.setItem("sidebar-collapsed", JSON.stringify(allClosed)); } catch {}
+    }
+    prevKey.current = key;
+  }, [pathname, searchParams]);
 
   return (
     <aside className="hidden lg:block pr-4">
@@ -126,8 +118,8 @@ export default function Sidebar() {
                           }
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          {iconForSource[s.slug] ? (
-                            <img src={iconForSource[s.slug]} alt="" className="w-4 h-4 object-contain" />
+                          {iconPath(s.slug) ? (
+                            <img src={iconPath(s.slug)!} alt="" className="w-4 h-4 object-contain" />
                           ) : (
                             <span className="w-4 h-4 inline-block rounded-sm bg-neutral-300" aria-hidden />
                           )}
@@ -144,4 +136,10 @@ export default function Sidebar() {
       </div>
     </aside>
   );
+}
+
+function initAllCollapsed() {
+  const all: Record<string, boolean> = {};
+  for (const g of GROUPS as readonly string[]) all[g] = true; // true = collapsed
+  return all;
 }

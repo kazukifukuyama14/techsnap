@@ -87,19 +87,24 @@ export default function DynamicFeed({ group, sourceSlug }: Props) {
       )}
       {Object.entries(groups)
         .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-        .map(([key, list]) => (
-          <section key={key} className="space-y-2">
-            <h2 className="text-sm font-medium text-neutral-500">
-              {key === todayKey ? "今日" : formatJaHeading(key)}
-            </h2>
-            <FeedList items={list} />
-          </section>
-        ))}
+        .map(([key, list], idx) => {
+          const isToday = key === todayKey;
+          const label = isToday ? "今日" : formatJaHeading(key);
+          const chip = "inline-flex items-center px-3 py-1 rounded-full border border-sky-200 bg-sky-50 text-sky-700 text-[12px] font-semibold tracking-wide";
+          return (
+            <section key={key} className={idx === 0 ? "" : "pt-6 mt-6 border-t border-neutral-200"}>
+              <h2 className="text-sm text-neutral-500 text-left mb-3">
+                <span className={chip}>{label}</span>
+              </h2>
+              <FeedList items={list} />
+            </section>
+          );
+        })}
       {items.length > visible && (
         <div className="pt-2">
           <button
             type="button"
-            className="mx-auto block px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50"
+            className="mx-auto block px-4 py-2 rounded border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
             onClick={() => setVisible((v) => v + 30)}
           >
             もっと見る
