@@ -13,12 +13,14 @@ export type FeedKind = "blog" | "docs" | "release";
 export type FeedItem = {
   id: string;
   title: string;
+  titleJa?: string;
   url: string; // 外部リンク
   publishedAt: string; // ISO
   sourceSlug: string;
   sourceName: string;
-  group: GroupKey;
+  group?: GroupKey;
   kind: FeedKind;
   tags?: string[];
   excerpt?: string;
+  summaryJa?: string;
 };

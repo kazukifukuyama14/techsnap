@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import React from "react";
-import { GROUP_LABELS, getSource, listFeedItems } from "@/lib/data";
-import FeedList from "@/components/FeedList";
+import { GROUP_LABELS, getSource } from "@/lib/data";
+import DynamicFeed from "@/components/DynamicFeed";
 
 type Params = { params: { slug: string } };
 
@@ -10,10 +10,10 @@ export function generateStaticParams() {
   return [];
 }
 
-export default function SourcePage({ params }: Params) {
-  const source = getSource(params.slug);
+export default async function SourcePage({ params }: { params: Promise<{ slug: string }> }) {
+  const p = await params;
+  const source = getSource(p.slug);
   if (!source) return notFound();
-  const items = listFeedItems({ sourceSlug: source.slug });
   return (
     <div className="space-y-6">
       <header>
@@ -25,7 +25,7 @@ export default function SourcePage({ params }: Params) {
           </a>
         )}
       </header>
-      <FeedList items={items} />
+      <DynamicFeed sourceSlug={source.slug} />
     </div>
   );
 }
