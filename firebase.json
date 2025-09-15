@@ -7,7 +7,7 @@
   },
   "functions": [
     {
-      "source": "functions",
+      "source": "apps/functions",
       "codebase": "default",
       "ignore": [
         "node_modules",
@@ -23,7 +23,7 @@
     }
   ],
   "hosting": {
-    "public": "public",
+    "public": "apps/web/public",
     "ignore": [
       "firebase.json",
       "**/.*",
