@@ -15,9 +15,11 @@ export default function FeedItemRow({ item }: { item: FeedItem }) {
           rel="noopener noreferrer"
           className="text-[15px] leading-6 hover:underline"
         >
-          {item.title}
+          {item.titleJa ?? item.title}
         </a>
-        {item.excerpt && <p className="mt-1 text-sm text-neutral-600">{item.excerpt}</p>}
+        {(item.summaryJa || item.excerpt) && (
+          <p className="mt-1 text-sm text-neutral-600">{item.summaryJa ?? item.excerpt}</p>
+        )}
         <div className="mt-1 flex flex-wrap gap-2">
           <span className="text-[11px] uppercase tracking-wide text-neutral-500">{item.kind}</span>
           {item.tags?.map((t) => (
@@ -31,4 +33,3 @@ export default function FeedItemRow({ item }: { item: FeedItem }) {
     </div>
   );
 }
-

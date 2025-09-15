@@ -1,7 +1,7 @@
 import { FeedItem, GroupKey, Source } from "./types";
 export const sources: Source[] = [
   // Development
-  { slug: "argo-cd", name: "Argo CD", group: "development", siteUrl: "https://argo-cd.readthedocs.io/" },
+  { slug: "argo-cd", name: "Argo CD", group: "development", siteUrl: "https://blog.argoproj.io/" },
   { slug: "circleci", name: "CircleCI", group: "development", siteUrl: "https://circleci.com/" },
   { slug: "github", name: "GitHub", group: "development", siteUrl: "https://github.blog/" },
   { slug: "gitlab", name: "GitLab", group: "development", siteUrl: "https://about.gitlab.com/releases/" },
@@ -10,10 +10,10 @@ export const sources: Source[] = [
   // Cloud / Infrastructure
   { slug: "aws", name: "AWS", group: "cloud", siteUrl: "https://aws.amazon.com/blogs/" },
   { slug: "azure", name: "Azure", group: "cloud", siteUrl: "https://azure.microsoft.com/" },
-  { slug: "firebase", name: "Firebase", group: "cloud", siteUrl: "https://firebase.google.com/" },
-  { slug: "gcp", name: "Google Cloud", group: "cloud", siteUrl: "https://cloud.google.com/blog" },
+  { slug: "firebase", name: "Firebase", group: "cloud", siteUrl: "https://firebase.blog/" },
+  { slug: "gcp", name: "Google Cloud", group: "cloud", siteUrl: "https://cloud.google.com/blog/?hl=en" },
   { slug: "kubernetes", name: "Kubernetes", group: "cloud", siteUrl: "https://kubernetes.io/blog/" },
-  { slug: "terraform", name: "Terraform", group: "cloud", siteUrl: "https://www.hashicorp.com/blog" },
+  { slug: "terraform", name: "Terraform", group: "cloud", siteUrl: "https://www.hashicorp.com/ja/blog" },
 
   // Libraries / Framework
   { slug: "nextjs", name: "Next.js", group: "libraries", siteUrl: "https://nextjs.org/blog" },
