@@ -79,7 +79,8 @@ async function summarizeBatch(items: { id: string; title: string; excerpt: strin
   const system = [
     "You are a concise Japanese summarizer for developer news.",
     "For each item, write a single Japanese sentence (90-130 chars) summarizing the essential update.",
-    "No emojis, no quotes, no marketing fluff.",
+    "No emojis, no quotes, no marketing fluff. Output Japanese only.",
+    "Do not include author names, dates, read-time (e.g., '10 min read'), UI words like Listen/Share/Press enter.",
   ].join("\n");
   const user = [
     "Return JSON object: { \"items\": { \"<id>\": { \"summaryJa\": \"...\" }, ... } }",
@@ -105,13 +106,26 @@ async function summarizeBatch(items: { id: string; title: string; excerpt: strin
     const content = j?.choices?.[0]?.message?.content || "";
     const json = extractJson(content);
     const parsed = JSON.parse(json || "{}") as { items?: Record<string, { summaryJa?: string }> };
+    // 日本語でない要約をまとめて翻訳
+    const toTranslate: Record<string, string> = {};
+    for (const [id, v] of Object.entries(parsed.items || {})) {
+      const s = v?.summaryJa || "";
+      if (s && needsJa(s)) toTranslate[id] = s;
+    }
+    let translated: Record<string, string> = {};
+    if (Object.keys(toTranslate).length) translated = await translateBatchToJaOpenAI(toTranslate, process.env.OPENAI_API_KEY!);
     const out: Record<string, string> = {};
-    for (const [id, v] of Object.entries(parsed.items || {})) if (v?.summaryJa) out[id] = v.summaryJa;
+    for (const [id, v] of Object.entries(parsed.items || {})) {
+      let s = translated[id] || v?.summaryJa || "";
+      if (!s) continue;
+      if (needsJa(s)) s = (await translatePlainJa(s, process.env.OPENAI_API_KEY!)) || s;
+      out[id] = finalizeSummary(s);
+    }
     return out;
   } catch {
     // エラー時はフォールバック
     const out: Record<string, string> = {};
-    for (const it of items) out[it.id] = heuristicSummary(it.title, it.excerpt || "");
+    for (const it of items) out[it.id] = finalizeSummary(heuristicSummary(it.title, it.excerpt || ""));
     return out;
   }
 }
@@ -137,5 +151,109 @@ function heuristicSummary(title: string, excerpt: string) {
   // 90–130字に近づける（英語は文字数で切る）
   const max = 130;
   if (trimmed.length <= max) return trimmed;
-  return trimmed.slice(0, max - 1) + "…";
+  // prefer cut at Japanese comma
+  const slice = trimmed.slice(0, max);
+  const comma = Math.max(slice.lastIndexOf("、"), slice.lastIndexOf(","));
+  return (comma >= 60 ? slice.slice(0, comma + 1) : slice.trimEnd());
+}
+
+function finalizeSummary(s: string) {
+  if (!s) return s;
+  let t = s
+    .replace(/[\s\u00A0]+/g, " ")
+    .replace(/^"|"$/g, "")
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .trim();
+  const m = t.match(/^([\s\S]*?[。.!?])\s/);
+  if (m) t = m[1];
+  const max = 130;
+  if (t.length > max) {
+    const slice = t.slice(0, max);
+    const p = Math.max(slice.lastIndexOf("。"), slice.lastIndexOf("!"), slice.lastIndexOf("?"));
+    if (p >= 60) t = slice.slice(0, p + 1);
+    else {
+      const c = Math.max(slice.lastIndexOf("、"), slice.lastIndexOf(","));
+      t = c >= 40 ? slice.slice(0, c + 1) : slice.trimEnd();
+    }
+  }
+  t = t.replace(/[、,;:、]+$/, "");
+  t = t.replace(/\b(min\s*read|Listen|Share|Press\s*enter)\b[\s\S]*$/i, "");
+  // Ensure end punctuation
+  if (!/[。.!?]$/.test(t)) t += "。";
+  return t;
+}
+
+function needsJa(s?: string) {
+  if (!s) return false;
+  const jp = (s.match(/[ぁ-んァ-ン一-龥々〆ヶ]/g) || []).length;
+  const latin = (s.match(/[A-Za-z]/g) || []).length;
+  return jp < 1 && latin > 0;
+}
+
+async function translateBatchToJaOpenAI(texts: Record<string, string>, key: string) {
+  try {
+    const system = [
+      "You are a professional translator.",
+      "Translate all given values into natural Japanese.",
+      "Return strictly JSON with the same keys and translated strings as values.",
+    ].join("\n");
+    const user = [
+      "Input JSON mapping keys->text:",
+      JSON.stringify(texts),
+    ].join("\n");
+    const body = {
+      model: process.env.OPENAI_TRANSLATE_MODEL || "gpt-4o-mini",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+    } as any;
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    const content = j?.choices?.[0]?.message?.content || "{}";
+    const json = extractJson(content);
+    const parsed = JSON.parse(json || "{}");
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed || {})) if (typeof v === "string") out[k] = v as string;
+    const missing = Object.keys(texts).filter((k) => !(k in out));
+    if (missing.length) {
+      for (const k of missing) {
+        const t = await translatePlainJa(texts[k], key);
+        if (t) out[k] = t;
+      }
+    }
+    return out;
+  } catch {
+    return {} as Record<string, string>;
+  }
+}
+async function translatePlainJa(text: string, key: string) {
+  try {
+    const system = "Translate into natural Japanese. Return only the translation.";
+    const body = {
+      model: process.env.OPENAI_TRANSLATE_MODEL || "gpt-4o-mini",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: text.slice(0, 4000) },
+      ],
+      temperature: 0.1,
+    } as any;
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json();
+    return j?.choices?.[0]?.message?.content?.trim() || "";
+  } catch {
+    return "";
+  }
 }
