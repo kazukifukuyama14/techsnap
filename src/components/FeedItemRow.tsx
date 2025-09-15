@@ -29,7 +29,7 @@ export default function FeedItemRow({ item }: { item: FeedItem }) {
           ))}
         </div>
       </div>
-      <div className="text-xs text-neutral-500 whitespace-nowrap">{formatJaDate(item.publishedAt)}</div>
+      <div className="text-xs text-neutral-500 whitespace-nowrap">{item.publishedAt && !item.publishedAt.startsWith("1970-") ? formatJaDate(item.publishedAt) : "日付不明"}</div>
     </div>
   );
 }

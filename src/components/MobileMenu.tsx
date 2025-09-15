@@ -2,7 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { GROUP_LABELS, listSources } from "@/lib/data";
-import { iconForSource } from "./Sidebar";
+import { iconPath } from "@/lib/icons";
 
 function HamburgerIcon({ size = 22 }: { size?: number }) {
   return (
@@ -92,8 +92,8 @@ export default function MobileMenu() {
                           onClick={() => setOpen(false)}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          {iconForSource[s.slug] ? (
-                            <img src={iconForSource[s.slug]} alt="" className="w-4 h-4 object-contain" />
+                          {iconPath(s.slug) ? (
+                            <img src={iconPath(s.slug)!} alt="" className="w-4 h-4 object-contain" />
                           ) : (
                             <span className="w-4 h-4 inline-block rounded-sm bg-neutral-300" aria-hidden />
                           )}
@@ -111,4 +111,3 @@ export default function MobileMenu() {
     </>
   );
 }
-
