@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   allowedDevOrigins: ["http://192.168.0.187:3000"],
   async rewrites() {
     return [
