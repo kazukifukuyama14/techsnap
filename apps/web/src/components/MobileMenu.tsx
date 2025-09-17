@@ -41,7 +41,7 @@ export default function MobileMenu() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed left-1/2 -translate-x-1/2 bottom-5 z-50 inline-flex items-center justify-center w-14 h-14 rounded-full border border-neutral-300 bg-white shadow-md"
+        className="lg:hidden fixed left-1/2 -translate-x-1/2 bottom-5 z-50 inline-flex items-center justify-center w-14 h-14 rounded-full border border-neutral-200 bg-stone-50 shadow-md"
         aria-label="メニューを開く"
       >
         <HamburgerIcon />
@@ -55,7 +55,7 @@ export default function MobileMenu() {
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <div className="absolute bottom-0 inset-x-0 bg-white rounded-t-2xl shadow-xl max-h-[80vh] overflow-y-auto">
+          <div className="absolute bottom-0 inset-x-0 bg-stone-50 rounded-t-2xl shadow-xl max-h-[80vh] overflow-y-auto">
             <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
               <div className="font-medium">メニュー</div>
               <button

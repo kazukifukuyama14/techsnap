@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body className={`${inter.className} antialiased bg-white text-neutral-900`}>
+      <body className={`${inter.className} antialiased bg-stone-100 text-neutral-900`}>
         <Header brandName="TechSnap" />
         <main className="mx-auto px-0 lg:px-0 py-8 min-h-[60vh]">
           <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-8">
