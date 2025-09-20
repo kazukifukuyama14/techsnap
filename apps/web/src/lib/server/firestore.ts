@@ -90,15 +90,6 @@ function initFirestore(): Firestore | null {
       return firestore;
     }
 
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_CLOUD_PROJECT) {
-      const app = initializeApp({
-        credential: applicationDefault(),
-        projectId: process.env.FIREBASE_PROJECT_ID,
-      });
-      firestore = getFirestore(app);
-      return firestore;
-    }
-
     initError = new Error("Firebase Admin credentials are not configured");
     firestore = null;
     return firestore;
