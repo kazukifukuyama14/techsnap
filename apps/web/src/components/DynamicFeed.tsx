@@ -8,10 +8,14 @@ export default function DynamicFeed({ group, sourceSlug }: { group?: string; sou
   const [items, setItems] = React.useState<FeedItem[] | null>(null);
   const [visible, setVisible] = React.useState(50);
   const [error, setError] = React.useState<string | null>(null);
+  const processedIdsRef = React.useRef<Set<string>>(new Set());
+  const enrichingRef = React.useRef(false);
 
   React.useEffect(() => {
     let cancelled = false;
     async function load() {
+      processedIdsRef.current = new Set();
+      enrichingRef.current = false;
       // 1) ベース記事: source 指定があればそのフィード、なければ全ソースの集約
       let base: FeedItem[] = [];
       try {
@@ -33,36 +37,55 @@ export default function DynamicFeed({ group, sourceSlug }: { group?: string; sou
       base.sort((a, b) => +new Date(b.publishedAt) - +new Date(a.publishedAt));
       setItems(base);
 
-      // 2) 先頭だけ要約/翻訳（失敗は黙認）
-      const head = base.slice(0, 30);
-      if (!head.length) return;
-      fetch("/api/enrich", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items: head.map((i) => ({ id: i.id, title: i.title, url: (i as any).url, excerpt: i.excerpt })) }),
-      })
-        .then((r) => r.json())
-        .then((res) => {
-          if (!res?.items) return;
-          const map = new Map<string, { summaryJa?: string; excerptJa?: string }>();
-          for (const it of res.items ?? []) map.set(it.id, it);
-          const mergedHead = head.map((i) => ({
-            ...i,
-            summaryJa: map.get(i.id)?.summaryJa ?? i.summaryJa ?? i.excerpt,
-            excerptJa: map.get(i.id)?.excerptJa ?? (map.get(i.id) as any)?.descriptionJa,
-          }));
-          setItems((prev) => {
-            const baseNow = prev ?? base;
-            const byId = new Map(baseNow.map((x) => [x.id, x] as const));
-            for (const m of mergedHead) byId.set(m.id, { ...byId.get(m.id)!, ...m });
-            return Array.from(byId.values());
-          });
-        })
-        .catch(() => {});
     }
     load();
     return () => { cancelled = true; };
   }, [group, sourceSlug]);
+
+
+  React.useEffect(() => {
+    if (!items || enrichingRef.current) return;
+    const slice = items.slice(0, visible);
+    const targets: { id: string; title: string; url: string; excerpt?: string }[] = [];
+    for (const it of slice) {
+      if (!processedIdsRef.current.has(it.id) && !it.summaryJa) {
+        processedIdsRef.current.add(it.id);
+        targets.push({ id: it.id, title: it.title, url: (it as any).url, excerpt: it.excerpt });
+      }
+    }
+    if (!targets.length) return;
+
+    enrichingRef.current = true;
+    fetch("/api/enrich", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items: targets }),
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (!res?.items) return;
+        const map = new Map<string, any>();
+        for (const it of res.items ?? []) map.set(it.id, it);
+        setItems((prev) => {
+          if (!prev) return prev;
+          const byId = new Map(prev.map((x) => [x.id, x] as const));
+          for (const target of targets) {
+            const baseItem = byId.get(target.id);
+            if (!baseItem) continue;
+            const payload = map.get(target.id) ?? {};
+            byId.set(target.id, {
+              ...baseItem,
+              summaryJa: payload.summaryJa ?? baseItem.summaryJa ?? baseItem.excerpt,
+            });
+          }
+          return Array.from(byId.values());
+        });
+      })
+      .catch(() => {})
+      .finally(() => {
+        enrichingRef.current = false;
+      });
+  }, [items, visible]);
 
   if (error) return <div className="text-sm text-red-600">フィード取得に失敗しました: {error}</div>;
   if (!items) return <div className="text-sm text-neutral-500">読み込み中...</div>;
