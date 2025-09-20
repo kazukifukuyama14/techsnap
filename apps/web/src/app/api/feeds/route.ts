@@ -1,7 +1,7 @@
 import { FEED_URLS } from "@/lib/feeds";
 import { getSource } from "@/lib/data";
 import { FeedItem, FeedKind, GroupKey } from "@/lib/types";
-import { getFirestoreAdmin } from "@/lib/server/firestore";
+import { getFirestoreAdmin, getFirestoreInitError } from "@/lib/server/firestore";
 import {
   computeExpiry,
   getDateKey,
@@ -80,7 +80,13 @@ export async function GET(req: Request) {
 
     return Response.json({ items: [] }, { status: 200 });
   } catch (e: any) {
-    return Response.json({ error: String(e) }, { status: 500 });
+    console.error("/api/feeds error", e);
+    console.error("stack:", e?.stack);
+    const initError = getFirestoreInitError();
+    return Response.json({
+      error: typeof e === "object" && e ? { message: String(e.message || e), code: (e as any)?.code } : String(e ?? "Unknown error"),
+      firestoreInitError: initError ? String(initError.message || initError) : undefined,
+    }, { status: 500 });
   }
 }
 

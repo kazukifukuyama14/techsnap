@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { sources } from "@/lib/data";
-import { getFirestoreAdmin } from "@/lib/server/firestore";
+import { getFirestoreAdmin, getFirestoreInitError } from "@/lib/server/firestore";
 import {
   computeExpiry,
   getDateKey,
@@ -51,7 +51,14 @@ export async function GET(req: NextRequest) {
 
     return Response.json({ items: merged, cache: "miss" });
   } catch (e: any) {
-    return Response.json({ error: String(e), items: [] }, { status: 500 });
+    console.error("/api/feeds/aggregate error", e);
+    console.error("stack:", e?.stack);
+    const initError = getFirestoreInitError();
+    return Response.json({
+      error: typeof e === "object" && e ? { message: String(e.message || e), code: (e as any)?.code } : String(e ?? "Unknown error"),
+      firestoreInitError: initError ? String(initError.message || initError) : undefined,
+      items: [],
+    }, { status: 500 });
   }
 }
 
