@@ -393,6 +393,36 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = "your-sender-id";
 NEXT_PUBLIC_FIREBASE_APP_ID = "your-app-id";
 ```
 
+#### 2.4.2 Firestore キャッシュ用サービスアカウント設定
+
+1. Firebase コンソールの *プロジェクト設定 > サービスアカウント* から新しい秘密鍵(JSON)を発行します。
+2. `.env.example` の `FIREBASE_SERVICE_ACCOUNT` に発行した JSON を貼り付けるか、`FIREBASE_PROJECT_ID` / `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY` を個別に設定します。
+3. 本番・ステージング環境では Secret Manager へ同じ値を保存し、Cloud Run / Functions の環境変数にも紐付けます。
+
+> ローカル開発では `.env.local` に同じ内容をコピーしてください。秘密鍵の改行は `\n` へ置換します。
+
+````bash
+# 例) .env.local へ追記
+echo 'FIREBASE_SERVICE_ACCOUNT={"project_id":"techsnap","client_email":"firebase-adminsdk@techsnap.iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"}' >> .env.local
+````
+
+### 2.7 フィードキャッシュ定期更新 (Cloud Scheduler)
+
+1. Cloud Run または VPC 外部で公開されているアプリ URL を `.env.example` の `FEED_CRON_ORIGIN` に設定します。
+2. スクリプト `scripts/fetch-feeds.mjs` を `node` で実行し、全ソースのキャッシュをウォームアップできます。
+   ```bash
+   node scripts/fetch-feeds.mjs
+   ```
+3. Cloud Scheduler で 1 時間毎の HTTP ジョブを作成し、デプロイ先 URL `/api/feeds/aggregate` を起点にトリガーさせます。
+   ```bash
+   gcloud scheduler jobs create http prefetch-feeds \
+     --schedule='0 * * * *' \
+     --uri="https://<cloud-run-host>/api/feeds/aggregate" \
+     --http-method=GET \
+     --oidc-service-account-email=cicd-cron@techsnap.iam.gserviceaccount.com
+   ```
+4. 強制リフレッシュが必要な場合は Scheduler の *リクエスト本文* に `refresh=1` を付与するか、環境変数 `FEED_CRON_REFRESH=1` を指定した Cloud Run ジョブを別途用意します。
+
 ### 2.5 Google Cloud 設定
 
 #### 2.5.1 gcloud コマンドラインツールのインストール

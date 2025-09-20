@@ -22,11 +22,13 @@ yarn-error.log*
 # Local env files
 .env
 .env.local
-.env.example
 .env.development.local
 .env.test.local
 .env.production.local
+**/.env.example
+!/.env.example
 
+secrets/
 # Firebase
 firebase-debug.log
 firestore-debug.log
@@ -42,12 +44,6 @@ cicd-sa-key.json
 
 # IDE files
 .vscode/
-<<<<<<< HEAD
-.codex/
-=======
-.codex
->>>>>>> origin/main
-AGENTS.md
 
 # OS files
 .DS_Store

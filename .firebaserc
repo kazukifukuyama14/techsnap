@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "techsnap-prod"
-  }
+    "default": "techsnap-staging",
+    "staging": "techsnap-staging"
+  },
+  "targets": {},
+  "etags": {}
 }
