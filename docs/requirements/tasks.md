@@ -1,49 +1,45 @@
-# 実装計画
+# 実装計画（Cloud Run 構成）
 
-- [ ] 1. セットアップ
+- [ ] 1. プロジェクト基盤セットアップ
 
-  - Firebase プロジェクト（staging / production）を作成し、Hosting・Firestore を有効化
-  - サービスアカウント JSON を取得して `.env.local` / GitHub Secrets に設定
-  - `npm install` で依存関係をインストール
+  - Next.js プロジェクト初期化と Tailwind CSS 設定
+  - TypeScript / ESLint / Prettier 設定
+  - ディレクトリ構造（apps/web, apps/api, lib, scripts）整備
 
-- [ ] 2. データ取得基盤
+- [ ] 2. インフラ環境構築（staging / production）
 
-  - RSS/Atom/JSON Feed からの取得ロジックを整備し、404/未対応形式のフォールバックを実装
-  - Firestore に日次スナップショットを保存するキャッシュ層を実装
-  - 要約 API 向けのデータ整形（タイトル、excerpt、URL）を用意
+  - GCP プロジェクト作成と課金設定
+  - Artifact Registry（Docker）リポジトリ作成
+  - Firestore（キャッシュ用）をネイティブモードで有効化
+  - サービスアカウントと IAM 権限の付与
 
-- [ ] 3. 要約・翻訳機能
+- [ ] 3. バックエンド API（Cloud Run）
 
-  - OpenAI API で 1 文要約を生成
-  - DeepL API で日本語翻訳を実施（フォールバックを含む）
-  - 生成結果を Firestore キャッシュへ永続化し、一覧表示で利用
+  - 要約 API を Express などで実装（OpenAI / DeepL 連携）
+  - Firestore キャッシュの CRUD 実装
+  - Dockerfile 作成・コンテナビルド
+  - Cloud Run へデプロイし、環境変数／Secret を設定
 
-- [ ] 4. フロントエンド
+- [ ] 4. フロントエンド（Cloud Run）
 
-  - 一覧画面（グループ／ソース別フィルタ、日付ごとセクション化）
-  - 記事カード（タイトル、要約、タグ、日時、外部リンク）
-  - ローディング・エラーハンドリング・無限スクロール／もっと見る機能
+  - UI コンポーネント（一覧、フィルタ、サイドバー）
+  - `scripts/fetch-feeds.mjs` と API 呼び出しの整備
+  - Dockerfile 作成・コンテナビルド
+  - Cloud Run へデプロイし、API ベース URL を設定
 
-- [ ] 5. 自動処理と運用
+- [ ] 5. キャッシュウォーミング
 
-  - `scripts/fetch-feeds.mjs` を整備し、Firebase Hosting の URL を指定してキャッシュウォーミング
-  - GitHub Actions (`prefetch-feeds.yml`) を設定し、1 時間ごと＆手動トリガーでスクリプトを実行
-  - Firestore キャッシュの監視・バックアップ手順をドキュメント化
+  - GitHub Actions で `scripts/fetch-feeds.mjs` を定期実行
+  - `force_refresh` オプションを手動トリガーで利用可能にする
+  - Firestore キャッシュの監視・クリーンアップ手順を策定
 
-- [ ] 6. デプロイフロー
+- [ ] 6. CI/CD（任意）
 
-  - `firebase init hosting` の設定整理（staging / production サイト）
-  - `firebase deploy --only hosting` の手順確認とデプロイチェックリスト作成
-  - 失敗時のロールバック方法（前回デプロイへの切り戻し）をまとめる
+  - Docker イメージビルドと Cloud Run デプロイを自動化
+  - Artifact Registry のクリーンアップポリシー設定
+  - ステージング → 本番のロールアウト手順を明文化
 
-- [ ] 7. 品質保証
-
-  - RSS 取得・要約生成・Firestore 保存のユニットテスト
-  - fetch/enrich API の統合テスト（Mock 使用）
-  - UI のスナップショットまたは Playwright による簡易 E2E
-
-- [ ] 8. ドキュメント整備
-
-  - セットアップ／運用手順を README と `docs/requirements/setup.md` に反映
-  - キャッシュ運用と GitHub Actions の手順を `docs/operation/operations.md` に記載
-  - アーキテクチャ図・データフローを更新
+- [ ] 7. ドキュメント／運用
+  - セットアップ手順（本書）と運用ガイドを更新
+  - アーキテクチャ図・データフローを Cloud Run 構成で更新
+  - コスト／アラートの監視方法を整備

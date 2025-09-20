@@ -1,6 +1,6 @@
 import "./globals.css";
 import { Inter, Noto_Serif_JP } from "next/font/google";
-import React from "react";
+import React, { Suspense } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
@@ -15,6 +15,10 @@ export const metadata = {
   description: "TechSnap Application",
 };
 
+function SidebarFallback() {
+  return <div className="hidden lg:block border-r border-neutral-200 min-h-[60vh]" aria-hidden />;
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -26,7 +30,7 @@ export default function RootLayout({
         <Header brandName="TechSnap" />
         <main className="mx-auto px-0 lg:px-0 py-8 min-h-[60vh]">
           <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-8">
-            <Sidebar />
+            <Suspense fallback={<SidebarFallback />}><Sidebar /></Suspense>
             <div className={`${notoSerif.className} container mx-auto px-4 sm:px-6 lg:px-8`}>{children}</div>
           </div>
         </main>

@@ -36,6 +36,9 @@ ui-debug.log
 .firebase/
 *-debug.log
 
+# gcloud
+.gcloud/
+
 # Analysis files
 /env_audits/
 

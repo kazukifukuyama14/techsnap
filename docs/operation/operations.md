@@ -1,76 +1,69 @@
-# 運用ガイド
+# 運用ガイド（Cloud Run 構成）
 
-## 1. 運用方針
+## 1. 体制
 
-- 個人開発プロジェクトとして、可用性はベストエフォート。
-- コストは Firebase 無料枠と API 利用料を中心に管理する。
-- 重大な障害が発生した場合は Firebase コンソールと GitHub Actions のログを最初に確認する。
+- 運用責任者: 個人開発者
+- 運用時間: ベストエフォート
+- 主な利用サービス: Cloud Run / Artifact Registry / Firestore / Secret Manager / GitHub Actions
 
----
+## 2. 日次チェック
 
-## 2. 日常チェックリスト（平日朝）
+1. Cloud Run（staging / production）のリビジョンとトラフィックを確認。
+2. Cloud Logging で `severity>=ERROR` を検索し、要約 API の失敗がないか確認。
+3. Firestore の `feedCache` / `feedAggregates` コレクションで更新日時を確認。
 
-1. ブラウザで `https://techsnap-prod.web.app` を開き、一覧が表示されているか確認。
-2. 最新の記事が表示されていない場合は、GitHub Actions の `Prefetch Feeds Cache` ワークフローが成功しているか確認。
-3. Firebase コンソール > Firestore で `feedCache` コレクションを開き、更新日時が直近になっているか確認。
+## 3. 週次チェック
 
----
+1. `npm outdated` / `npm audit` をローカルで実行し、依存関係を棚卸し。
+2. GitHub Actions の履歴を確認し、失敗しているワークフローがないかをチェック。
+3. Cloud Monitoring のダッシュボードでレイテンシ・CPU/メモリ使用量を確認。
+4. Artifact Registry の古いイメージが自動削除されているか確認。
 
-## 3. 週次チェックリスト
+## 4. 月次チェック
 
-1. `npm outdated` / `npm audit` をローカルで実行し、依存関係の更新を検討。
-2. GitHub Actions の履歴（失敗したワークフローや長時間実行）を確認。
-3. OpenAI / DeepL の使用量をダッシュボードで確認し、上限に余裕があるかチェック。
+1. Cloud Billing でコストレポートを確認。
+2. Firestore バックアップ（必要に応じて）を実施。
+3. Cloud Run サービスアカウントや Secret Manager のローテーションが必要か見直す。
 
----
+## 5. GitHub Actions
 
-## 4. 月次チェックリスト
-
-1. Firebase コンソールで課金の概要を確認。
-2. Firestore のバックアップが必要であれば、[バックアップ機能](https://firebase.google.com/docs/firestore/backups) を実行。
-3. 運用ドキュメント (`docs/operation/operations.md`) が最新か見直し。
-
----
-
-## 5. GitHub Actions（キャッシュウォーミング）
-
-- ワークフロー名: **Prefetch Feeds Cache**
-- スケジュール: 毎時 0 分に自動実行
-- 手動実行手順:
-  1. GitHub リポジトリの **Actions** タブを開く
-  2. `Prefetch Feeds Cache` を選択
-  3. `Run workflow` を押し、必要に応じて `force_refresh=true` を指定
-- 失敗した場合はログを確認し、`FEED_CRON_ORIGIN` や API キーの環境変数が正しいか確認する。
-
----
+- キャッシュウォーミング: `Prefetch Feeds Cache` ワークフローで 1 時間毎に実行。必要に応じて `force_refresh=true` で手動実行。
+- デプロイ用ワークフロー（任意）: `frontend` `api` の Docker イメージをビルドし、`gcloud run deploy` を実行する。
 
 ## 6. Firestore キャッシュ運用
 
-- キャッシュは `.next/cache/enrich.json`（ローカル）と Firestore `feedCache` / `feedAggregates` に保存される。
-- 誤った要約があった場合は該当ドキュメントを削除し、GitHub Actions で `force_refresh=true` で再実行する。
-- 長期間使わないデータは Firestore から削除してコストを抑える。
+- 誤った要約があれば該当ドキュメントを削除し、GitHub Actions を `force_refresh=true` で再実行。
+- 長期的に不要なデータは削除して保存料金を抑える。
 
----
+## 7. 障害対応
 
-## 7. 既知のトラブルと対処
+1. Cloud Logging / Monitoring で影響範囲を確認。
+2. Cloud Run の以前のリビジョンへロールバック（Cloud Console または `gcloud run services update-traffic`）。
+3. Firestore のバックアップから復旧が必要な場合は `gcloud firestore import` / `export` を使用。
+4. 原因分析が終わったら GitHub Issues / ドキュメントに記録。
 
-| 症状                                   | 対処                                                                              | 備考                                                       |
-| -------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `scripts/fetch-feeds.mjs` で ENOTFOUND | `FEED_CRON_ORIGIN` が正しい URL か再確認（デプロイ済みの Hosting ドメインを指定） | ローカルで実行する場合は `firebase deploy` 後の URL を使用 |
-| OpenAI API で rate-limit               | しばらく待機してから `force_refresh=true` で再実行                                | Plan の上限に注意                                          |
-| Firestore 書き込みが失敗               | サービスアカウントのキーが有効期限切れの場合、再発行して Secrets を更新           | Firebase コンソールで確認                                  |
+## 8. 手動デプロイ手順（参考）
 
----
+```bash
+# フロント
+REGION=asia-northeast1
+PROJECT=techsnap-staging
+REPO=techsnap-web
 
-## 8. コミュニケーション・変更管理
+gcloud builds submit apps/web \
+  --tag $REGION-docker.pkg.dev/$PROJECT/$REPO/frontend:manual
 
-- 重要な設定変更（API キーの更新、キャッシュ仕様の変更など）は GitHub の Pull Request でレビューし、ドキュメントを更新する。
-- 障害や改修内容は Issue に記録しておくと後から追跡しやすい。
+gcloud run deploy techsnap-frontend \
+  --image $REGION-docker.pkg.dev/$PROJECT/$REPO/frontend:manual \
+  --region $REGION \
+  --allow-unauthenticated
+```
 
----
+バックエンドも同様に `apps/api` を対象に実行する。
 
 ## 9. 参考リンク
 
-- [Firebase Hosting 公式ドキュメント](https://firebase.google.com/docs/hosting)
-- [Firestore ドキュメント](https://firebase.google.com/docs/firestore)
-- [GitHub Actions ドキュメント](https://docs.github.com/actions)
+- [Cloud Run ドキュメント](https://cloud.google.com/run/docs)
+- [Artifact Registry ドキュメント](https://cloud.google.com/artifact-registry/docs)
+- [Firestore ドキュメント](https://cloud.google.com/firestore/docs)
+- [Secret Manager](https://cloud.google.com/secret-manager/docs)

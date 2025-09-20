@@ -2,21 +2,18 @@
   "name": "techsnap",
   "version": "1.0.0",
   "private": true,
-  "description": "Monorepo root for techsnap (web + firebase functions)",
+  "description": "Monorepo root for techsnap (web)",
   "directories": {
     "doc": "docs"
   },
   "workspaces": [
-    "apps/web",
-    "apps/functions"
+    "apps/web"
   ],
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
     "start": "npm --workspace apps/web run start",
-    "lint": "npm --workspace apps/web run lint",
-    "functions:serve": "npm --workspace apps/functions run serve",
-    "functions:deploy": "npm --workspace apps/functions run deploy"
+    "lint": "npm --workspace apps/web run lint"
   },
   "repository": {
     "type": "git",

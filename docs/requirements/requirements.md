@@ -10,45 +10,48 @@
 ## 要件 2 データ取得とキャッシュ
 
 1. RSS/Atom/JSON Feed から 1 日単位で記事を収集できる。
-2. 取得した記事は Firestore にキャッシュされ、既読データの再取得を最小化する。
+2. 取得した記事は Firestore（GCP）にキャッシュされ、再取得コストを抑える。
 3. キャッシュは 6 時間を目安に期限管理される。
 4. 手動/自動で要約キャッシュを再生成できる。
 
 ## 要件 3 ホスティングと配信
 
-1. Next.js アプリは Firebase Hosting（App Hosting）で配信する。
-2. ステージング・本番を Firebase Hosting の複数サイトで切り替え管理できる。
-3. デプロイは `firebase deploy --only hosting` で完結する。
-4. カスタムドメインは任意とし、必要に応じて Firebase Hosting のガイドに従って設定できる。
+1. Next.js フロントエンドは Cloud Run（コンテナ）で提供する。
+2. 要約 API も Cloud Run 上のコンテナとして稼働し、フロントから HTTPS 経由で呼び出せる。
+3. ビルド済みコンテナは Artifact Registry に保存し、Cloud Run へロールアウトできる。
+4. カスタムドメインや HTTPS 設定は Cloud Run / Cloud Load Balancer を利用して管理する。
 
 ## 要件 4 運用・監視
 
-1. 日次でサイト表示と要約の更新状況を確認できるチェックリストを提供する。
-2. Firestore のキャッシュ状況は Firebase コンソールで確認し、必要に応じて削除/再生成できる。
-3. GitHub Actions の実行ログからキャッシュウォーミングの成否を確認できる。
-4. コストと課金通知は Firebase / Google Cloud Console の標準機能で確認する。
+1. Cloud Run のメトリクス／ログを利用し、日次で稼働状況を確認できる。
+2. Firestore に保存されたキャッシュは一括削除や再生成が可能である。
+3. GitHub Actions の実行ログからキャッシュウォーミングやデプロイ状況を確認できる。
+4. コストは Cloud Billing レポートで把握し、無料枠内に収めることを意識する。
 
 ## 要件 5 自動処理
 
 1. GitHub Actions を用いて 1 時間ごとに `scripts/fetch-feeds.mjs` を実行し、最新データをウォームアップする。
-2. 手動実行時は `force_refresh` オプションでキャッシュを更新できる。
-3. 自動処理に必要なシークレットは GitHub Secrets で管理する。
+2. 手動実行時は `force_refresh` オプションでキャッシュを強制更新できる。
+3. デプロイ用の CI では Docker イメージをビルドし、Artifact Registry / Cloud Run へプッシュできる。
+4. 自動処理に必要なシークレットは GitHub Secrets と Secret Manager で管理する。
 
 ## 要件 6 セキュリティ
 
-1. Firestore への書き込みはサーバーサイド（Next.js API）に限定する。
-2. Firestore Security Rules でキャッシュ読み取りを認証済みリクエストに限定する（必要に応じて公開設定を検討）。
-3. API キーやサービスアカウントは `.env` と GitHub Secrets で管理し、リポジトリに直接含めない。
+1. Firestore への書き込みはバックエンド（Cloud Run API）に限定する。
+2. Cloud Run サービスアカウントは最小権限とし、API キーや秘密情報は Secret Manager 経由で注入する。
+3. 外部 API キー（OpenAI / DeepL）は `.env` や Secrets に保存し、リポジトリに含めない。
+4. Cloud Run の公開範囲（認証有無）を明示し、不要なエンドポイントは非公開にする。
 
 ## 要件 7 パフォーマンスと UX
 
 1. 一覧表示は 1 秒以内のレスポンスを目標とし、ローディング表示を実装する。
 2. モバイル/デスクトップ双方でのレイアウト最適化を行う。
 3. 30 件以上の記事を段階的に表示できる無限スクロールまたはページネーションを用意する。
+4. API 呼び出しは Cloud Run のスケーリング特性を踏まえてタイムアウトやリトライを管理する。
 
 ## 要件 8 ドキュメント
 
-1. セットアップ手順（Firebase プロジェクト設定、環境変数準備、デプロイ手順）を README / `docs/requirements/setup.md` に明記する。
-2. 運用手順（日次/週次チェック、GitHub Actions 手動実行方法）を `docs/operation/operations.md` にまとめる。
-3. アーキテクチャとデータフローは `docs/design/design.md` で図示する。
-4. 変更履歴は Git によって追跡可能とし、重大な環境変更はドキュメント化する。
+1. セットアップ手順（Docker ビルド、Artifact Registry、Cloud Run デプロイ）を README / `docs/requirements/setup.md` に明記する。
+2. 運用手順（日次/週次チェック、GitHub Actions の手動実行方法）を `docs/operation/operations.md` にまとめる。
+3. アーキテクチャとデータフローは `docs/design/design.md` で Cloud Run ベースとして図示する。
+4. 変更履歴は Git で追跡可能とし、重要な環境変更はドキュメントに反映する。
