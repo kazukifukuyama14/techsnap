@@ -347,6 +347,32 @@ gcloud logging read 'resource.type="cloud_run_revision" AND "cache-hit"' --fresh
 # Firestoreコンソールでクエリパフォーマンス確認
 ```
 
+### 6.3 フィードキャッシュ監視
+
+```bash
+# 直近1時間のフィードAPIレスポンスとキャッシュ利用状況を確認
+gcloud logging read 'resource.type="cloud_run_revision" AND httpRequest.requestUrl:"/api/feeds"' \
+  --freshness=1h \
+  --format='value(timestamp,httpRequest.requestUrl,jsonPayload.cache)'
+
+# Firestore に保存された feedCache スナップショットを確認
+gcloud alpha firestore documents list feedCache --project=PROJECT_ID --page-size=20
+
+# 集約キャッシュ(daily aggregate)の最新ドキュメントを確認
+gcloud alpha firestore documents list feedAggregates --project=PROJECT_ID --page-size=20
+```
+
+### 6.4 GitHub Actions によるキャッシュウォーミング
+
+```bash
+# 手動トリガー
+gh workflow run 'Prefetch Feeds Cache' --ref main --field force_refresh=true
+```
+
+- `.github/workflows/prefetch-feeds.yml` が毎時と手動で `scripts/fetch-feeds.mjs` を実行し、staging / production の両 URL をウォームアップ。
+- `force_refresh=true` で呼び出すと `refresh=1` クエリが付与され、キャッシュを無条件に取り直します。
+- GitHub Actions のログで各環境の実行状況を確認し、失敗時は Cloud Logging と同様に調査してください。
+
 ## 7. コスト管理
 
 ### 7.1 コスト監視
