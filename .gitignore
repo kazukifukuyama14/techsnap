@@ -28,16 +28,17 @@ yarn-error.log*
 **/.env.example
 !/.env.example
 
-secrets/
-# Firebase
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-.firebase/
-*-debug.log
-
 # gcloud
 .gcloud/
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
 
 # Analysis files
 /env_audits/
