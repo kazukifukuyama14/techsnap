@@ -32,6 +32,7 @@ yarn-error.log*
 .gcloud/
 
 # Terraform
+/infra/techsnap/plan/*
 **/.terraform/*
 *.tfstate
 *.tfstate.*
@@ -39,6 +40,7 @@ yarn-error.log*
 *.tfvars
 *.tfvars.json
 .terraform.lock.hcl
+*.backend.hcl
 
 # Analysis files
 /env_audits/
