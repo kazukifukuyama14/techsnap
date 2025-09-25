@@ -6,6 +6,8 @@ locals {
   region                 = var.region
   zone                   = "${var.region}-a"
   # `prod` もしくは `production` の場合のみ本番扱いにする
-  is_production          = contains(["prod", "production"], local.environment_normalized)
-  subnet_cidr            = local.is_production ? "10.0.1.0/24" : "10.0.2.0/24"
+  is_production = contains(["prod", "production"], local.environment_normalized)
+  subnet_cidr   = local.is_production ? "10.0.1.0/24" : "10.0.2.0/24"
+  # リソース名共通prefix
+  prefix = "${var.project_settings.project}-${var.project_settings.environment}"
 }

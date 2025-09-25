@@ -16,6 +16,12 @@ variable "project_settings" {
   })
 }
 
+# GCP プロジェクト ID の定義
+variable "project_id" {
+  description = "GCP プロジェクトの ID"
+  type        = string
+}
+
 # Artifact Registry の設定
 variable "artifact_registry_settings" {
   description = "Artifact Registry の設定"
