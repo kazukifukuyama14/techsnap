@@ -9,5 +9,5 @@ locals {
   is_production = contains(["prod", "production"], local.environment_normalized)
   subnet_cidr   = local.is_production ? "10.0.1.0/24" : "10.0.2.0/24"
   # リソース名共通prefix
-  prefix = "${var.project_settings.project}-${var.project_settings.environment}"
+  prefix = "${var.project_settings.project}-${local.environment_normalized}"
 }

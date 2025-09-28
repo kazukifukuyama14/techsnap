@@ -26,10 +26,24 @@ variable "project_id" {
 variable "artifact_registry_settings" {
   description = "Artifact Registry の設定"
   type = object({
-    repository_name = string
-    location        = string
-    format          = string
+    repository_name          = string
+    location                 = string
+    format                   = string
+    cleanup_keep_version     = optional(number, 2)
+    cleanup_delete_tag_state = optional(string, "ANY")
   })
+}
+
+variable "env" {
+  description = "環境名 (例: ステージングまたは本番環境)。未指定時は project_settings.environment を使用"
+  type        = string
+  default     = null
+}
+
+variable "service_account_email" {
+  description = "Artifact Registry に権限を付与するサービスアカウント (空文字で Cloud Run サービスアカウントを使用)"
+  type        = string
+  default     = ""
 }
 
 # Cloud DNS の設定
