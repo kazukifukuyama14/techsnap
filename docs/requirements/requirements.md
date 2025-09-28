@@ -5,21 +5,20 @@
 1. ユーザーは技術ブログ/ドキュメントの更新を一覧で閲覧できる。
 2. 各記事の要約は 1 文で表示され、日本語訳を提供する。
 3. 記事の原文リンク・公開日時・タグを確認できる。
-4. 翻訳や要約でエラーが発生した場合でも、一覧は崩れず原文情報でフォールバックする。
+4. 翻訳や要約でエラーが発生した場合でも、一覧は崩れず原文情報でフォールバックする（英語要約 + 英文タイトル）。
 
 ## 要件 2 データ取得とキャッシュ
 
 1. RSS/Atom/JSON Feed から 1 日単位で記事を収集できる。
-2. 取得した記事は Firestore（GCP）にキャッシュされ、再取得コストを抑える。
-3. キャッシュは 6 時間を目安に期限管理される。
+2. 取得した記事は `.next/cache/enrich.json` に保存され、同一リビジョン内で再取得コストを抑える（将来的に永続ストアへ移行予定）。
+3. キャッシュはコンテナ再起動時にクリアされることを前提とし、必要に応じて再生成できる仕組みを備える。
 4. 手動/自動で要約キャッシュを再生成できる。
 
 ## 要件 3 ホスティングと配信
 
-1. Next.js フロントエンドは Cloud Run（コンテナ）で提供する。
-2. 要約 API も Cloud Run 上のコンテナとして稼働し、フロントから HTTPS 経由で呼び出せる。
-3. ビルド済みコンテナは Artifact Registry に保存し、Cloud Run へロールアウトできる。
-4. カスタムドメインや HTTPS 設定は Cloud Run / Cloud Load Balancer を利用して管理する。
+1. Next.js フロントエンド（要約 API を内包）は Cloud Run（単一コンテナ）で提供する。
+2. ビルド済みコンテナは Artifact Registry（staging/prod）に保存し、Cloud Run へロールアウトできる。
+3. カスタムドメインや HTTPS 設定は Cloud Run / Cloud Load Balancer を利用して管理する。
 
 ## 要件 4 運用・監視
 
@@ -30,9 +29,9 @@
 
 ## 要件 5 自動処理
 
-1. GitHub Actions を用いて 1 時間ごとに `scripts/fetch-feeds.mjs` を実行し、最新データをウォームアップする。
-2. 手動実行時は `force_refresh` オプションでキャッシュを強制更新できる。
-3. デプロイ用の CI では Docker イメージをビルドし、Artifact Registry / Cloud Run へプッシュできる。
+1. GitHub Actions の `Build and Push Container` で Docker イメージをビルドし、Artifact Registry（staging/prod）に push できる。
+2. staging は `main` push で自動実行し、prod は `workflow_dispatch` で `confirm_prod=deploy` を指定する。
+3. 自動デプロイは今後の追加項目とし、現状は手動で Cloud Run へロールアウトする。
 4. 自動処理に必要なシークレットは GitHub Secrets と Secret Manager で管理する。
 
 ## 要件 6 セキュリティ
@@ -53,5 +52,5 @@
 
 1. セットアップ手順（Docker ビルド、Artifact Registry、Cloud Run デプロイ）を README / `docs/requirements/setup.md` に明記する。
 2. 運用手順（日次/週次チェック、GitHub Actions の手動実行方法）を `docs/operation/operations.md` にまとめる。
-3. アーキテクチャとデータフローは `docs/design/design.md` で Cloud Run ベースとして図示する。
+3. アーキテクチャとデータフローは `docs/design/design.md` で最新の構成を示す。
 4. 変更履歴は Git で追跡可能とし、重要な環境変更はドキュメントに反映する。

@@ -2,64 +2,61 @@
 
 ## 概要
 
-技術記事要約サービス「TechSnap」は Next.js + TypeScript を基盤とし、フロントエンドと要約 API をそれぞれ Cloud Run 上のコンテナとして運用します。Firestore をキャッシュストアに利用し、OpenAI / DeepL API を通じて記事要約と翻訳を実現します。
+技術記事要約サービス「TechSnap」は Next.js (App Router) + TypeScript を基盤とした単一コンテナ構成です。Next.js 内部の API Route が記事要約と翻訳を担当し、OpenAI / DeepL API を呼び出して結果を生成します。要約結果はコンテナ内のキャッシュファイルに保存され、同一リビジョン内で再利用されます（将来的に Firestore など永続キャッシュへ移行予定）。
 
 ## アーキテクチャ
 
 ```mermaid
 graph TB
-  User((User)) --> Front[Cloud Run: techsnap-frontend]
-  Front --> API[Cloud Run: techsnap-api]
-  API --> Firestore[(Firestore Cache)]
-  API --> OpenAI[OpenAI API]
-  API --> DeepL[DeepL API]
+  User((User)) --> Web[Cloud Run: techsnap-web]
+  Web --> OpenAI[OpenAI API]
+  Web --> DeepL[DeepL API]
 
-  subgraph "Build & Deploy"
+  subgraph "Build & Release"
     GitHub[GitHub Actions]
-    AR[Artifact Registry]
+    AR[Artifact Registry (staging/prod)]
     GitHub --> AR
-    AR --> Front
-    AR --> API
+    AR --> Web
   end
 ```
 
-- `techsnap-frontend`: Next.js の SSR を行うフロントエンド。
-- `techsnap-api`: 要約生成・翻訳・キャッシュ書き込みを担当するバックエンド。
-- Firestore: フィードと要約のキャッシュ。Admin SDK をサービスアカウントで利用。
-- GitHub Actions: Docker イメージのビルドと Cloud Run へのデプロイを自動化。
+- `techsnap-web`: Next.js サービス。ページ表示と `/api/enrich` による要約処理を同一コンテナで実装。
+- キャッシュ: `.next/cache/enrich.json` に一時保存。リビジョン単位で保持し、外部ストアは未使用。
+- GitHub Actions: Docker イメージのビルドと Artifact Registry への push を担当（staging 自動 / prod 手動）。
 
 ## データフロー
 
-1. GitHub Actions が `apps/web` / `apps/api` の Docker イメージをビルドし、Artifact Registry に push。
-2. Cloud Run へデプロイされた `techsnap-frontend` がユーザーリクエストに応答し、`techsnap-api` へ要約/翻訳をリクエスト。
-3. `techsnap-api` は対象記事をフェッチし、OpenAI で英語要約 → DeepL で日本語化 → Firestore に保存。
-4. フロントは Firestore キャッシュを優先し、未取得のものは API へ問い合わせ。
+1. GitHub Actions が `apps/web/Dockerfile` を用いてイメージをビルドし、staging/prod 用 Artifact Registry へ push。
+2. Cloud Run (予定) またはローカルコンテナにデプロイされた `techsnap-web` がリクエストを受け付け、`/api/enrich` で要約処理を実行。
+3. `/api/enrich` は対象記事の本文を取得し、OpenAI で英語要約 → DeepL で日本語化。失敗時はフォールバックロジックを使用。
+4. 要約結果は `.next/cache/enrich.json` に保存され、同一リビジョン内で再利用される。
 
 ## モジュール構成
 
-| モジュール                  | 役割                                                        |
-| --------------------------- | ----------------------------------------------------------- |
-| `apps/web`                  | Next.js フロントエンド。Cloud Run (frontend) で稼働。       |
-| `apps/api`                  | 要約 API（Express など）。Cloud Run (api) で稼働。          |
-| `scripts/fetch-feeds.mjs`   | フィード取得とキャッシュ更新（GitHub Actions で定期実行）。 |
-| `apps/web/src/lib/server/*` | Firestore / 要約 API との接続ヘルパー。                     |
+| モジュール / ディレクトリ     | 役割                                                                          |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| `apps/web`                    | Next.js 本体。App Router + `/api/enrich` で要約と翻訳を実装。                 |
+| `apps/web/src/app/api/enrich` | 記事本文の抽出、OpenAI / DeepL API 連携、要約キャッシュ制御。                 |
+| `apps/web/Dockerfile`         | マルチステージ構成で SSR 向けコンテナをビルド。                               |
+| `.github/workflows`           | `build-and-push.yml` が staging/prod 向けのビルド＆push 処理を定義。          |
+| `infra/techsnap`              | Terraform モジュール。Artifact Registry / IAM / VPC など GCP リソースを管理。 |
 
 ## 環境
 
-| 環境       | Cloud Run サービス                                   | Artifact Registry                                              | Firestore          | 説明       |
-| ---------- | ---------------------------------------------------- | -------------------------------------------------------------- | ------------------ | ---------- |
-| staging    | `techsnap-frontend-staging` / `techsnap-api-staging` | `asia-northeast1-docker.pkg.dev/techsnap-staging/techsnap-web` | `techsnap-staging` | 検証用環境 |
-| production | `techsnap-frontend-prod` / `techsnap-api-prod`       | `asia-northeast1-docker.pkg.dev/techsnap-prod/techsnap-web`    | `techsnap-prod`    | 本番環境   |
+| 環境       | コンテナ / サービス         | Artifact Registry リポジトリ                                            | 備考                             |
+| ---------- | --------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| staging    | `techsnap-web` (staging)    | `asia-northeast1-docker.pkg.dev/techsnap-staging/techsnap-staging-repo` | `main` ブランチ push で自動 push |
+| production | `techsnap-web` (production) | `asia-northeast1-docker.pkg.dev/techsnap-prod/techsnap-prod-repo`       | `workflow_dispatch` で手動 push  |
 
 ## デプロイ戦略
 
-1. GitHub Actions がブランチ（main / develop など）に応じて Docker イメージをビルド。
-2. Artifact Registry に `frontend:staging` `backend:staging` などのタグで push。
-3. `gcloud run deploy` を呼び出し、Cloud Run サービスを更新。トラフィックは段階的に切り替え可能。
-4. 古いイメージは Artifact Registry のクリーンアップポリシーで自動削除。
+1. GitHub Actions の `build-and-push.yml` が `apps/web` をビルドし、staging/prod 用リポジトリへ push。
+2. staging: `main` への push で自動実行。prod: `workflow_dispatch` で `target_environment=prod`,`confirm_prod=deploy` を指定して手動実行。
+3. Cloud Run へのデプロイは `gcloud run deploy --image <IMAGE_URI>` を用いた手動 or 今後追加予定のワークフローで実施。
+4. Artifact Registry のクリーンアップは Terraform の `cleanup_policies` で最新 2 件を保持し、それ以外を削除。
 
 ## 今後の改善ポイント
 
+- Cloud Run への自動デプロイ手順の実装（現在は手動デプロイ想定）。
+- Firestore や Secret Manager 等へのキャッシュ/シークレット移行によるリビジョン跨ぎの安定化。
 - Cloud Load Balancer + Cloud CDN を組み合わせた配信最適化。
-- Firestore 以外のキャッシュストア（MemoryStore 等）への移行検討。
-- Cloud Run サービス間通信を Identity Token で保護する（内部認証強化）。

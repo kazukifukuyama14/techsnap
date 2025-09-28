@@ -1,45 +1,42 @@
 # 実装計画（Cloud Run 構成）
 
-- [ ] 1. プロジェクト基盤セットアップ
+- [x] 1. プロジェクト基盤セットアップ
 
-  - Next.js プロジェクト初期化と Tailwind CSS 設定
-  - TypeScript / ESLint / Prettier 設定
-  - ディレクトリ構造（apps/web, apps/api, lib, scripts）整備
+  - Next.js + Tailwind CSS の初期化
+  - TypeScript / ESLint / Prettier の整備
+  - ディレクトリ構造（`apps/web`, `infra/techsnap`, `.github/workflows`）の確立
 
-- [ ] 2. インフラ環境構築（staging / production）
+- [x] 2. インフラ環境構築（staging / production）
 
-  - GCP プロジェクト作成と課金設定
-  - Artifact Registry（Docker）リポジトリ作成
-  - Firestore（キャッシュ用）をネイティブモードで有効化
-  - サービスアカウントと IAM 権限の付与
+  - GCP プロジェクト・課金設定
+  - Artifact Registry（staging/prod）リポジトリ作成
+  - Cloud Run 用サービスアカウント & IAM（Artifact Registry Writer 権限）
+  - Terraform で Artifact Registry / IAM / VPC などをコード化
 
-- [ ] 3. バックエンド API（Cloud Run）
+- [ ] 3. Cloud Run デプロイ
 
-  - 要約 API を Express などで実装（OpenAI / DeepL 連携）
-  - Firestore キャッシュの CRUD 実装
-  - Dockerfile 作成・コンテナビルド
-  - Cloud Run へデプロイし、環境変数／Secret を設定
+  - `apps/web/Dockerfile` を Cloud Run 向けに最適化
+  - 手動 `gcloud run deploy` 手順を確立（staging → prod）
+  - 今後の自動デプロイワークフローを追加検討
 
-- [ ] 4. フロントエンド（Cloud Run）
+- [x] 4. フロントエンド機能
 
-  - UI コンポーネント（一覧、フィルタ、サイドバー）
-  - `scripts/fetch-feeds.mjs` と API 呼び出しの整備
-  - Dockerfile 作成・コンテナビルド
-  - Cloud Run へデプロイし、API ベース URL を設定
+  - `/api/enrich` で記事本文抽出・OpenAI 要約・DeepL 翻訳を実装
+  - 英語/日本語要約のフォールバック＆文字数制限を実装
+  - `.next/cache/enrich.json` を利用したリビジョン内キャッシュを実装
 
-- [ ] 5. キャッシュウォーミング
+- [ ] 5. キャッシュと永続化
 
-  - GitHub Actions で `scripts/fetch-feeds.mjs` を定期実行
-  - `force_refresh` オプションを手動トリガーで利用可能にする
-  - Firestore キャッシュの監視・クリーンアップ手順を策定
+  - 永続ストア（Firestore / Memorystore 等）への移行方針を検討
+  - キャッシュ再生成手順とモニタリング項目を整備
 
-- [ ] 6. CI/CD（任意）
+- [x] 6. CI（Build & Push）
 
-  - Docker イメージビルドと Cloud Run デプロイを自動化
-  - Artifact Registry のクリーンアップポリシー設定
-  - ステージング → 本番のロールアウト手順を明文化
+  - GitHub Actions `build-and-push.yml` を作成（staging=自動 / prod=手動）
+  - GitHub Variables / Secrets（`GCP_AR_*`, `GCP_PROJECT_ID_*`、サービスアカウントキー）を設定
+  - Artifact Registry のクリーンアップポリシーを Terraform に反映
 
-- [ ] 7. ドキュメント／運用
-  - セットアップ手順（本書）と運用ガイドを更新
-  - アーキテクチャ図・データフローを Cloud Run 構成で更新
-  - コスト／アラートの監視方法を整備
+- [ ] 7. 運用・ドキュメント
+  - Cloud Run 監視 & ログ確認フローを整備
+  - 手動デプロイ / ロールバック手順を `docs/operation/operations.md` に反映（済）
+  - 今後の自動デプロイ・永続キャッシュ等の改善項目を追記
