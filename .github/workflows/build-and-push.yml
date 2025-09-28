@@ -1,0 +1,125 @@
+name: Build and Push Container
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Deploy target"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - prod
+      confirm_prod:
+        description: "For prod, type 'deploy' to continue"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - env_name: staging
+            registry_location: ${{ vars.GCP_AR_LOCATION_STG }}
+            registry_repository: ${{ vars.GCP_AR_REPO_STG }}
+            project_id: ${{ vars.GCP_PROJECT_ID_STG }}
+            secret_name: GCP_AR_PUSHER_KEY_STG
+            trigger: push
+            require_confirmation: false
+          - env_name: prod
+            registry_location: ${{ vars.GCP_AR_LOCATION_PRD }}
+            registry_repository: ${{ vars.GCP_AR_REPO_PRD }}
+            project_id: ${{ vars.GCP_PROJECT_ID_PRD }}
+            secret_name: GCP_AR_PUSHER_KEY_PRD
+            trigger: workflow_dispatch
+            require_confirmation: true
+    env:
+      IMAGE_NAME: web
+      REGISTRY_LOCATION: ${{ matrix.registry_location }}
+      REGISTRY_REPOSITORY: ${{ matrix.registry_repository }}
+      PROJECT_ID: ${{ matrix.project_id }}
+      SHOULD_RUN: ${{ (github.event_name == 'push' && matrix.trigger == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.event.inputs.target_environment == matrix.env_name) }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Require confirmation for prod
+        if: ${{ env.SHOULD_RUN == 'true' && matrix.require_confirmation && github.event_name == 'workflow_dispatch' }}
+        run: |
+          if [ "${{ github.event.inputs.confirm_prod }}" != "deploy" ]; then
+            echo "::error::Prod deployment requires confirm_prod=deploy"
+            exit 1
+          fi
+
+      - name: Validate required variables
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        run: |
+          missing=()
+          for key in REGISTRY_LOCATION REGISTRY_REPOSITORY PROJECT_ID; do
+            if [ -z "${!key}" ]; then
+              missing+=("$key")
+            fi
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required GitHub variable(s): ${missing[*]}" >&2
+            exit 1
+          fi
+
+      - name: Ensure secret is configured
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        env:
+          REGISTRY_CREDENTIALS: ${{ secrets[matrix.secret_name] }}
+        run: |
+          if [ -z "$REGISTRY_CREDENTIALS" ]; then
+            echo "::error::Missing secret ${matrix.secret_name}"
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets[matrix.secret_name] }}
+
+      - name: Set up Cloud SDK
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        run: gcloud auth configure-docker ${{ env.REGISTRY_LOCATION }}-docker.pkg.dev --quiet
+
+      - name: Build image
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        run: |
+          IMAGE_URI="${REGISTRY_LOCATION}-docker.pkg.dev/${PROJECT_ID}/${REGISTRY_REPOSITORY}/${IMAGE_NAME}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+          docker build \
+            --file apps/web/Dockerfile \
+            --tag "${IMAGE_URI}:${GITHUB_SHA}" \
+            --tag "${IMAGE_URI}:latest" \
+            apps/web
+
+      - name: Push image
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        run: |
+          docker push "${IMAGE_URI}:${GITHUB_SHA}"
+          docker push "${IMAGE_URI}:latest"
+
+      - name: Export image URI
+        id: image
+        if: ${{ env.SHOULD_RUN == 'true' }}
+        run: echo "image=${IMAGE_URI}:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
