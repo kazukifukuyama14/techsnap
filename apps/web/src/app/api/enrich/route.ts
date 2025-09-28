@@ -55,10 +55,10 @@ export async function POST(req: NextRequest) {
     : {};
 
   const englishSummaries = items.map((it) => {
-    const fromModel = cleanEnglishSummary(englishById[it.id]);
+    const fromModel = clampEnglishSummary(cleanEnglishSummary(englishById[it.id]));
     if (fromModel) return fromModel;
     const fallback = pickKeySentence(contexts[it.id] || sanitizeForModel(it.excerpt || ""), it.title);
-    return cleanEnglishSummary(fallback || it.excerpt || it.title);
+    return clampEnglishSummary(cleanEnglishSummary(fallback || it.excerpt || it.title));
   });
 
   const summaryJaList = await translateSummaries(englishSummaries);
@@ -145,14 +145,14 @@ async function translateSummaries(english: string[]) {
   if (process.env.DEEPL_API_KEY) {
     const deepL = await translateToJaDeepL(english);
     if (deepL?.length === english.length) {
-      return deepL.map((t: string, idx: number) => cleanSummary(t || english[idx]));
+      return deepL.map((t: string, idx: number) => clampJapaneseSummary(cleanSummary(t || english[idx])));
     }
   }
   const openai = await translateToJa(english);
   if (openai?.length === english.length) {
-    return openai.map((t: string, idx: number) => cleanSummary(t || english[idx]));
+    return openai.map((t: string, idx: number) => clampJapaneseSummary(cleanSummary(t || english[idx])));
   }
-  return english;
+  return english.map((t) => clampJapaneseSummary(t));
 }
 
 async function runWithLimit<T>(limit: number, tasks: (() => Promise<T>)[]) {
@@ -302,6 +302,28 @@ function cleanSummary(s?: string) {
     .replace(/\s+/g, " ")
     .replace(/\s*…+\s*$/g, "。")
     .trim();
+}
+
+function clampEnglishSummary(s?: string) {
+  if (!s) return "";
+  let text = s.trim();
+  if (!text) return "";
+  const words = text.split(/\s+/);
+  if (words.length > 26) text = words.slice(0, 26).join(" ");
+  if (text.length > 200) text = text.slice(0, 200).trim();
+  return text;
+}
+
+function clampJapaneseSummary(s?: string) {
+  if (!s) return "";
+  let text = s.trim();
+  if (!text) return "";
+  const MAX_CHARS = 140;
+  if (text.length > MAX_CHARS) {
+    text = text.slice(0, MAX_CHARS).replace(/[、。.!?！？\s]+$/, "");
+  }
+  if (!/[。.!?！？]$/.test(text)) text = `${text}。`;
+  return text;
 }
 
 async function translateToJa(list: string[]) {
