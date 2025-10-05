@@ -54,4 +54,4 @@ jobs:
       - name: Summary
         if: ${{ env.SHOULD_RUN == 'true' }}
         run: |
-          echo "Triggered job ${{ matrix.job_name }} in ${{ matrix.env_name }} (${matrix.project_id})" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered job ${{ matrix.job_name }} in ${{ matrix.env_name }} (${{ matrix.project_id }})" >> $GITHUB_STEP_SUMMARY
