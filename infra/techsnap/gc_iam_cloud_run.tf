@@ -4,6 +4,7 @@ locals {
     try(var.iam_settings.service_account_name, null),
     "cloud-run-${local.environment_normalized}"
   )
+  cloud_run_roles = toset(concat(var.iam_settings.roles, ["roles/run.viewer"]))
 }
 
 # IAM 用のサービスアカウントの作成
@@ -15,7 +16,7 @@ resource "google_service_account" "cloud_run" {
 
 # IAM ロールの付与
 resource "google_project_iam_member" "cloud_run_roles" {
-  for_each = toset(var.iam_settings.roles)
+  for_each = local.cloud_run_roles
 
   project = local.project_id
   role    = each.value

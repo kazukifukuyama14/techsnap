@@ -41,6 +41,7 @@ yarn-error.log*
 *.tfvars.json
 .terraform.lock.hcl
 *.backend.hcl
+*.tfplan
 
 # Analysis files
 /env_audits/
