@@ -128,3 +128,17 @@ npx tsx apps/web/src/scripts/datastore/poc.ts
 ```
 
 > 初回実行時に `@google-cloud/datastore` への認証に必要なサービスアカウントが設定されていることを確認してください。
+
+### テストデータのクリーンアップ
+
+PoC で作成したデータは `apps/web/src/scripts/datastore/cleanup.ts` で削除できます。
+
+```bash
+export GCP_PROJECT_ID=techsnap-staging
+npx tsx apps/web/src/scripts/datastore/cleanup.ts
+
+export GCP_PROJECT_ID=techsnap-prod
+npx tsx apps/web/src/scripts/datastore/cleanup.ts
+```
+
+引数に URL を渡せば任意の記事を削除可能です。

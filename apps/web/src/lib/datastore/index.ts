@@ -351,6 +351,18 @@ export async function updateSummaryStatus(
   }
 }
 
+export async function deleteArticleByUrl(url: string, projectId?: string): Promise<void> {
+  const ds = ensureDatastore(projectId);
+  const key = articleKey(ds, url);
+  await ds.delete(key);
+}
+
+export async function deleteSummaryByArticleUrl(url: string, projectId?: string): Promise<void> {
+  const ds = ensureDatastore(projectId);
+  const key = summaryKey(ds, url);
+  await ds.delete(key);
+}
+
 export async function listSummariesByStatus(
   status: SummaryStatus,
   options: { limit?: number; projectId?: string } = {}
