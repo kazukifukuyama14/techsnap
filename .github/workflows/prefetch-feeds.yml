@@ -1,0 +1,53 @@
+name: Prefetch Feeds Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: "Set to true to append refresh=1 to each request"
+        required: false
+        default: "false"
+  schedule:
+    - cron: "0 * * * *"
+
+jobs:
+  prefetch:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - env_name: staging
+            origin: https://techsnap-staging.web.app
+          - env_name: production
+            origin: https://techsnap-prod.web.app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prefetch feeds (${{ matrix.env_name }})
+        env:
+          FEED_CRON_ORIGIN: ${{ matrix.origin }}
+          FORCE_REFRESH: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force_refresh == 'true' }}
+        run: |
+          echo "Prefetching feeds for ${{ matrix.env_name }} (${FEED_CRON_ORIGIN})"
+          if [ "${FORCE_REFRESH}" = "true" ]; then
+            export FEED_CRON_REFRESH=1
+            echo "Force refresh enabled"
+          fi
+          node scripts/fetch-feeds.mjs
+
+      - name: Workflow summary
+        run: |
+          echo "Completed prefetch for ${{ matrix.env_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "Origin: ${{ matrix.origin }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.force_refresh }}" = "true" ]; then
+            echo "Force refresh run" >> $GITHUB_STEP_SUMMARY
+          fi
