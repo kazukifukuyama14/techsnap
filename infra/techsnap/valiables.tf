@@ -79,6 +79,12 @@ variable "iam_settings" {
   })
 }
 
+variable "datastore_iam_roles" {
+  description = "Datastore へアクセスさせるために Cloud Run サービスアカウントへ付与する IAM ロール一覧"
+  type        = list(string)
+  default     = []
+}
+
 # Cloud SQL の設定
 variable "monitoring_settings" {
   description = "Monitoring の設定"
