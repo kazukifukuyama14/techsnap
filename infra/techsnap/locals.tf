@@ -10,4 +10,14 @@ locals {
   subnet_cidr   = local.is_production ? "10.0.1.0/24" : "10.0.2.0/24"
   # リソース名共通prefix
   prefix = "${var.project_settings.project}-${local.environment_normalized}"
+  required_project_services = [
+    "artifactregistry.googleapis.com",
+    "run.googleapis.com",
+    "iam.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
+    "secretmanager.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com"
+  ]
 }
