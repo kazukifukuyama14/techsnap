@@ -22,6 +22,12 @@ variable "project_id" {
   type        = string
 }
 
+variable "env" {
+  description = "環境名 (例: ステージングまたは本番環境)。未指定時は project_settings.environment を使用"
+  type        = string
+  default     = null
+}
+
 # Artifact Registry の設定
 variable "artifact_registry_settings" {
   description = "Artifact Registry の設定"
@@ -32,12 +38,6 @@ variable "artifact_registry_settings" {
     cleanup_keep_version     = optional(number, 2)
     cleanup_delete_tag_state = optional(string, "ANY")
   })
-}
-
-variable "env" {
-  description = "環境名 (例: ステージングまたは本番環境)。未指定時は project_settings.environment を使用"
-  type        = string
-  default     = null
 }
 
 variable "service_account_email" {
@@ -70,6 +70,41 @@ variable "cloud_run_settings" {
   })
 }
 
+# Cloud Run ジョブの設定
+
+variable "prefetch_feeds_image" {
+  description = "Container image for prefetch feeds job"
+  type        = string
+}
+variable "feed_cron_origin" {
+  description = "The origin URL for the feed cron job"
+  type        = string
+}
+
+variable "force_refresh" {
+  description = "Flag to force refresh feeds"
+  type        = string
+}
+
+# Cloud Scheduler の設定
+variable "cloud_scheduler_settings" {
+  description = "Cloud Scheduler の設定"
+  type = object({
+    job_name     = string
+    description  = string
+    schedule     = string
+    time_zone    = string
+    retry_count  = number
+    max_duration = string
+  })
+}
+
+variable "schedule_cron" {
+  description = "Cloud Scheduler ジョブの cron 式"
+  type        = string
+  default     = "0 * * * *"
+}
+
 # IAM の設定
 variable "iam_settings" {
   description = "IAM の設定"
@@ -85,7 +120,7 @@ variable "datastore_iam_roles" {
   default     = []
 }
 
-# Cloud SQL の設定
+# Monitoring の設定
 variable "monitoring_settings" {
   description = "Monitoring の設定"
   type = object({
