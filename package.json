@@ -7,13 +7,16 @@
     "doc": "docs"
   },
   "workspaces": [
-    "apps/web"
+    "apps/web",
+    "apps/jobs/summarizer"
   ],
   "scripts": {
     "dev": "npm --workspace apps/web run dev",
     "build": "npm --workspace apps/web run build",
     "start": "npm --workspace apps/web run start",
-    "lint": "npm --workspace apps/web run lint"
+    "lint": "npm --workspace apps/web run lint",
+    "summarizer:dev": "npm --workspace apps/jobs/summarizer run dev",
+    "summarizer:build": "npm --workspace apps/jobs/summarizer run build"
   },
   "repository": {
     "type": "git",
