@@ -1,0 +1,16 @@
+indexes:
+  - kind: Article
+    properties:
+      - name: status
+      - name: updatedAt
+        direction: desc
+  - kind: Article
+    properties:
+      - name: sourceId
+      - name: publishedAt
+        direction: desc
+  - kind: Summary
+    properties:
+      - name: status
+      - name: updatedAt
+        direction: desc
