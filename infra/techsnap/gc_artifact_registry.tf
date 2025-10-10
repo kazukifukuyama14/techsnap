@@ -46,7 +46,7 @@ resource "google_artifact_registry_repository" "this" {
   }
 }
 
-# Artifact Registry リポジトリへの IAM 権限の付与s
+# Artifact Registry リポジトリへの IAM 権限の付与 (管理者)
 resource "google_artifact_registry_repository_iam_member" "artifact_registry_admin" {
   repository = google_artifact_registry_repository.this.id
   role       = "roles/artifactregistry.admin"

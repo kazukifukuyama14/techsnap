@@ -1,4 +1,4 @@
-# Prefetch feeds Cloud Run Job
+# Cloud Run Job の事前取得フィード
 resource "google_cloud_run_v2_job" "prefetch_feeds" {
   name     = "prefetch-feeds"
   location = var.region
@@ -6,7 +6,7 @@ resource "google_cloud_run_v2_job" "prefetch_feeds" {
   template {
     template {
       containers {
-        image = "${var.prefetch_feeds_image}"
+        image = var.prefetch_feeds_image
 
         env {
           name  = "FEED_CRON_ORIGIN"
@@ -22,7 +22,7 @@ resource "google_cloud_run_v2_job" "prefetch_feeds" {
   }
 }
 
-# Cloud Scheduler -> Cloud Run Job
+# Cloud Run Job
 resource "google_cloud_scheduler_job" "prefetch_feeds_schedule" {
   name        = var.cloud_scheduler_settings.job_name
   description = var.cloud_scheduler_settings.description

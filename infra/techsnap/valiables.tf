@@ -1,3 +1,7 @@
+# =============================================================================
+# ドメイン・プロジェクト設定
+# =============================================================================
+
 # ドメイン名の定義
 variable "domain" {
   description = "Techsnap のプライマリ ドメイン名 (DNS、証明書などで使用)"
@@ -22,13 +26,16 @@ variable "project_id" {
   type        = string
 }
 
+# 環境名 (例: staging または prod)
 variable "env" {
   description = "環境名 (例: ステージングまたは本番環境)。未指定時は project_settings.environment を使用"
   type        = string
   default     = null
 }
 
+# =============================================================================
 # Artifact Registry の設定
+# =============================================================================
 variable "artifact_registry_settings" {
   description = "Artifact Registry の設定"
   type = object({
@@ -40,13 +47,17 @@ variable "artifact_registry_settings" {
   })
 }
 
+# Artifact Registry に権限を付与するサービスアカウント (空文字で Cloud Run サービスアカウントを使用)
 variable "service_account_email" {
   description = "Artifact Registry に権限を付与するサービスアカウント (空文字で Cloud Run サービスアカウントを使用)"
   type        = string
   default     = ""
 }
 
+# =============================================================================
 # Cloud DNS の設定
+# =============================================================================
+
 variable "cloud_dns_settings" {
   description = "Cloud DNS の設定"
   type = object({
@@ -54,6 +65,10 @@ variable "cloud_dns_settings" {
     domain    = string
   })
 }
+
+# =============================================================================
+# Cloud Run / バッチジョブ設定
+# =============================================================================
 
 # Cloud Run の設定
 variable "cloud_run_settings" {
@@ -70,23 +85,28 @@ variable "cloud_run_settings" {
   })
 }
 
-# Cloud Run ジョブの設定
-
+# Prefetch feeds Job の設定
 variable "prefetch_feeds_image" {
   description = "Container image for prefetch feeds job"
   type        = string
 }
+
+# Feed Cron Job の設定
 variable "feed_cron_origin" {
   description = "The origin URL for the feed cron job"
   type        = string
 }
 
+# Force Refresh の設定
 variable "force_refresh" {
   description = "Flag to force refresh feeds"
   type        = string
 }
 
+# =============================================================================
 # Cloud Scheduler の設定
+# =============================================================================
+
 variable "cloud_scheduler_settings" {
   description = "Cloud Scheduler の設定"
   type = object({
@@ -99,13 +119,17 @@ variable "cloud_scheduler_settings" {
   })
 }
 
+# Cloud Scheduler ジョブの cron 式
 variable "schedule_cron" {
   description = "Cloud Scheduler ジョブの cron 式"
   type        = string
   default     = "0 * * * *"
 }
 
+# =============================================================================
 # IAM の設定
+# =============================================================================
+
 variable "iam_settings" {
   description = "IAM の設定"
   type = object({
@@ -114,13 +138,17 @@ variable "iam_settings" {
   })
 }
 
+# Datastore へアクセスさせるために Cloud Run サービスアカウントへ付与する IAM ロール一覧
 variable "datastore_iam_roles" {
   description = "Datastore へアクセスさせるために Cloud Run サービスアカウントへ付与する IAM ロール一覧"
   type        = list(string)
   default     = []
 }
 
-# Monitoring の設定
+# =============================================================================
+# Monitoring / Logging / Secrets の設定
+# =============================================================================
+
 variable "monitoring_settings" {
   description = "Monitoring の設定"
   type = object({
@@ -148,7 +176,10 @@ variable "secrets_manager_settings" {
   })
 }
 
+# =============================================================================
 # VPC の設定
+# =============================================================================
+
 variable "vpc_settings" {
   description = "ネットワークの設定"
   type = object({
